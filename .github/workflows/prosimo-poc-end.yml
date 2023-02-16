@@ -1,0 +1,144 @@
+name: Prosimo POC End
+
+on:
+  workflow_dispatch:
+
+env: 
+  WORK_DIR: 'Examples/${{ inputs.cloud }}/POC'
+
+jobs:
+
+  Matrix:
+    name: Read Prosimo Config - Build matrix
+    runs-on: ubuntu-latest
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        ref: ${{ github.GITHUB_REF }}
+
+    - name: Read config file
+      id: matrixset
+      run: | 
+        clouds=$(echo $(cat prosimo-config.json | jq '.cloudNickname' | jq 'keys' ) | sed 's/ //g')
+        tfbackend=$(echo $(cat prosimo-config.json | jq '.terraform.backend' | jq 'values' ) | sed 's/ //g' | sed -e 's/^"//' -e 's/"$//')
+        echo "::set-output name=clouds::$clouds"
+        echo "::set-output name=tfbackend::$tfbackend"
+    outputs: 
+      clouds-json: ${{ steps.matrixset.outputs.clouds }}
+      tfbackend: ${{ steps.matrixset.outputs.tfbackend }}
+
+  Offboard:
+      needs:
+      - Matrix
+      strategy:
+        fail-fast: false
+        matrix:
+          cloud: ${{ fromJson(needs.Matrix.outputs.clouds-json) }}
+      runs-on: ubuntu-latest
+      container: 
+        image: prosimoghaction.azurecr.io/prosimo/terraform:latest
+      name: Prosimo Offboard ${{ matrix.cloud }}
+      env: 
+        WORK_DIR: 'Examples/${{ matrix.cloud }}/POC'
+        PROSIMO_API_TOKEN: ${{ secrets.PROSIMO_API_TOKEN }}
+        PROSIMO_TEAMNAME: ${{ secrets.PROSIMO_TEAMNAME }}
+        CLOUD: ${{ matrix.cloud }}      
+        HOME: /root
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+        ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+        ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+        ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+        VM_PASSWORD: ${{ secrets.VM_PASSWORD }}
+        BE_STORAGE_NAME: ${{ secrets.BE_STORAGE_NAME }}
+        BE_CONTAINER_NAME: ${{ secrets.BE_CONTAINER_NAME }}
+        BE_RGNAME: ${{ secrets.BE_RGNAME }}      
+        TFBACKEND: ${{ needs.Matrix.outputs.tfbackend }}
+      defaults:
+        run:
+          working-directory: 'Examples/${{ matrix.cloud }}/POC'  
+      steps:
+        - name: Checkout 
+          uses: actions/checkout@v3
+          with:
+            token: ${{ secrets.GITHUB_TOKEN }}
+
+        - name: Terraform Init
+          run: |
+            chmod +x "${GITHUB_WORKSPACE}/Assets/Scripts/terraform-init.sh"
+            "${GITHUB_WORKSPACE}/Assets/Scripts/terraform-init.sh"
+
+        - name: Terraform - Offboard Prosimo Apps
+          env:
+            DECOM: true
+            CONFIGFILE: "${{ github.workspace }}/prosimo-config.json"
+          run: |
+            chmod +x "${GITHUB_WORKSPACE}/Assets/Scripts/terraform-plan.sh"
+            "${GITHUB_WORKSPACE}/Assets/Scripts/terraform-plan.sh"
+
+  Destroy:
+    needs:
+      - Matrix
+      - Offboard
+    strategy:
+      fail-fast: false
+      matrix:
+        cloud: ${{ fromJson(needs.Matrix.outputs.clouds-json) }}
+    runs-on: ubuntu-latest
+    container: 
+      image: prosimoghaction.azurecr.io/prosimo/terraform:latest
+    name: Terraform Plan ${{ matrix.cloud }} - Destroy
+    environment:
+      name: Prod
+    env: 
+      WORK_DIR: 'Examples/${{ matrix.cloud }}/POC'
+      PROSIMO_API_TOKEN: ${{ secrets.PROSIMO_API_TOKEN }}
+      PROSIMO_TEAMNAME: ${{ secrets.PROSIMO_TEAMNAME }}
+      CLOUD: ${{ matrix.cloud }}      
+      HOME: /root
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      VM_PASSWORD: ${{ secrets.VM_PASSWORD }}
+      BE_STORAGE_NAME: ${{ secrets.BE_STORAGE_NAME }}
+      BE_CONTAINER_NAME: ${{ secrets.BE_CONTAINER_NAME }}
+      BE_RGNAME: ${{ secrets.BE_RGNAME }}      
+      TFBACKEND: ${{ needs.Matrix.outputs.tfbackend }}
+    defaults:
+      run:
+        working-directory: 'Examples/${{ matrix.cloud }}/POC'  
+    steps:
+      - name: Checkout 
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Terraform Init
+        run: |
+          chmod +x "${GITHUB_WORKSPACE}/Assets/Scripts/terraform-init.sh"
+          "${GITHUB_WORKSPACE}/Assets/Scripts/terraform-init.sh"       
+
+      - name: Terraform Plan - Destroy
+        env:
+          DESTROY: true
+          DECOM: false
+          CONFIGFILE: "${{ github.workspace }}/prosimo-config.json"
+        run: |
+          chmod +x "${GITHUB_WORKSPACE}/Assets/Scripts/terraform-plan.sh"
+          "${GITHUB_WORKSPACE}/Assets/Scripts/terraform-plan.sh"
+
+      - name: Terraform Apply - Destroy
+        run: |
+          terraform apply tfplan-${{ matrix.cloud }}
+
+      - name: Trigger Prosimo Network Scan
+        run: |
+          curl -X POST "https://${{ secrets.PROSIMO_TEAMNAME }}.admin.prosimo.io/api/network/discovery/refresh" -H "Content-Type: application/json" -H "Prosimo-ApiToken: ${{ secrets.PROSIMO_API_TOKEN }}"          

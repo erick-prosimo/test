@@ -1,0 +1,236 @@
+name: Prosimo POC Plan
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - 'Examples/AWS/POC/**.tf**'
+      - 'Examples/Azure/POC/**.tf**'
+      - 'Examples/GCP/POC/**.tf**'
+      
+jobs:
+
+  Matrix:
+    name: Read Prosimo Config - Build matrix
+    runs-on: ubuntu-latest
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        ref: ${{ github.GITHUB_REF }}
+
+    - name: Read config file
+      id: matrixplan
+      run: | 
+        clouds=$(echo $(cat prosimo-config.json | jq '.cloudNickname' | jq 'keys' ) | sed 's/ //g')
+        tfbackend=$(echo $(cat prosimo-config.json | jq '.terraform.backend' | jq 'values' ) | sed 's/ //g' | sed -e 's/^"//' -e 's/"$//')
+        echo "::set-output name=clouds::$clouds"
+        echo "::set-output name=tfbackend::$tfbackend"
+    outputs: 
+      clouds-json: ${{ steps.matrixplan.outputs.clouds }}
+      tfbackend: ${{ steps.matrixplan.outputs.tfbackend }}
+
+  Test:
+    strategy:
+      fail-fast: false
+      matrix: 
+        cloud: ${{ fromJson(needs.Matrix.outputs.clouds-json) }} 
+    name:  Prosimo Unit Tests
+    needs:
+      - Matrix
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prosimo Unit Tests
+        id: test_module_plan
+        uses: zyborg/pester-tests-report@v1
+        env:
+          TEST_FILE: Examples/${{ matrix.cloud }}/POC/terraform.tfvars
+          CONFIG_FILE: prosimo-config.json
+          CLOUD: ${{ matrix.cloud }}
+          PROSIMO_TEAMNAME: ${{ secrets.PROSIMO_TEAMNAME }}
+          PROSIMO_API_TOKEN: ${{ secrets.PROSIMO_API_TOKEN }}
+        with:
+          include_paths: Assets/Tests/
+          report_name: Prosimo Plan - ${{ matrix.cloud }} Test Results
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tests_fail_step: false
+
+  Lint:
+    needs:
+      - Matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        cloud: ${{ fromJson(needs.Matrix.outputs.clouds-json) }}
+    runs-on: ubuntu-latest
+    container: 
+      image: prosimoghaction.azurecr.io/prosimo/terraform:latest
+    name: Terraform Lint and Format
+    env: 
+      WORK_DIR: 'Examples/${{ matrix.cloud }}/POC'
+      PROSIMO_API_TOKEN: ${{ secrets.PROSIMO_API_TOKEN }}
+      PROSIMO_TEAMNAME: ${{ secrets.PROSIMO_TEAMNAME }}
+      CLOUD: ${{ matrix.cloud }}      
+      HOME: /root
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      VM_PASSWORD: ${{ secrets.VM_PASSWORD }}
+      BE_STORAGE_NAME: ${{ secrets.BE_STORAGE_NAME }}
+      BE_CONTAINER_NAME: ${{ secrets.BE_CONTAINER_NAME }}
+      BE_RGNAME: ${{ secrets.BE_RGNAME }}      
+      TFBACKEND: ${{ needs.Matrix.outputs.tfbackend }}
+    defaults:
+      run:
+        working-directory: 'Examples/${{ matrix.cloud }}/POC'  
+    steps:
+      - name: Checkout 
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}    
+
+      - name: Terraform Format
+        id: fmt
+        env:
+          BRANCH: ${{ github.GITHUB_REF }}
+        run: |
+          chmod +x "${GITHUB_WORKSPACE}/Assets/Scripts/terraform-fmt.sh"
+          "${GITHUB_WORKSPACE}/Assets/Scripts/terraform-fmt.sh"
+
+      - name: Terraform Init
+        run: |
+          chmod +x "${GITHUB_WORKSPACE}/Assets/Scripts/terraform-init.sh"
+          "${GITHUB_WORKSPACE}/Assets/Scripts/terraform-init.sh"
+
+      - name: Terraform Validate
+        run: |
+          terraform validate -no-color
+
+      - name: Terraform Lint
+        run: |
+          tflint --module --no-color
+
+  Plan:
+    needs:
+      - Matrix
+    strategy:
+      fail-fast: false
+      matrix:
+        cloud: ${{ fromJson(needs.Matrix.outputs.clouds-json) }}
+    runs-on: ubuntu-latest
+    container: 
+      image: prosimoghaction.azurecr.io/prosimo/terraform:latest
+    name: Terraform Plan
+    env: 
+      WORK_DIR: 'Examples/${{ matrix.cloud }}/POC'
+      PROSIMO_API_TOKEN: ${{ secrets.PROSIMO_API_TOKEN }}
+      PROSIMO_TEAMNAME: ${{ secrets.PROSIMO_TEAMNAME }}
+      CLOUD: ${{ matrix.cloud }}      
+      HOME: /root
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      VM_PASSWORD: ${{ secrets.VM_PASSWORD }}
+      BE_STORAGE_NAME: ${{ secrets.BE_STORAGE_NAME }}
+      BE_CONTAINER_NAME: ${{ secrets.BE_CONTAINER_NAME }}
+      BE_RGNAME: ${{ secrets.BE_RGNAME }}      
+      TFBACKEND: ${{ needs.Matrix.outputs.tfbackend }}
+    defaults:
+      run:
+        working-directory: 'Examples/${{ matrix.cloud }}/POC'  
+    steps:
+      - name: Checkout 
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Terraform Init
+        id: init
+        run: |
+          chmod +x "${GITHUB_WORKSPACE}/Assets/Scripts/terraform-init.sh"
+          "${GITHUB_WORKSPACE}/Assets/Scripts/terraform-init.sh"
+
+      - name: Terraform Format
+        id: fmt
+        run: terraform fmt -diff          
+
+      - name: Terraform Validate
+        id: validate
+        run: |
+          terraform validate -no-color   
+
+      - name: Terraform Lint
+        id: lint
+        run: |
+          tflint --module --no-color         
+
+      - name: Terraform Plan
+        id: plan  
+        env:
+          DECOM: false
+          CONFIGFILE: "${{ github.workspace }}/prosimo-config.json"
+        run: |
+          chmod +x "${GITHUB_WORKSPACE}/Assets/Scripts/terraform-plan.sh"
+          "${GITHUB_WORKSPACE}/Assets/Scripts/terraform-plan.sh"
+
+      - name: Terraform Plan Output
+        id: tfreport
+        run: |
+          tfshow="$(terraform show -no-color tfplan-$CLOUD)"
+          echo "::set-output name=planreport::$tfshow"
+
+      - uses: actions/github-script@v6
+        if: github.event_name == 'pull_request'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+            #### Terraform Linting 💨\`${{ steps.lint.outcome }}\`            
+            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
+            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+            
+            <details><summary>Show Plan</summary>
+            
+            \`\`\`\n
+            ${{ env.planreport }}
+            \`\`\`
+            
+            </details>
+            
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Working Directory: \`${{ env.tf_actions_working_dir }}\`, Workflow: \`${{ github.workflow }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })            
+            
+      - name: Terraform Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: exit 1            
+    
+      - name: Terraform Plan Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: tfplan-${{ matrix.cloud }}
+          path: ${{ env.WORK_DIR }}/tfplan-${{ matrix.cloud }}
+          if-no-files-found: error
+          retention-days: 1          

@@ -1,0 +1,38 @@
+{
+    "cloudNickname": {
+        "AWS":      "AWSInfra"
+    },
+    "edgeCIDR": {
+        "AWS":      "10.10.32.0/20",
+        "Azure":    "10.10.0.0/20"
+    },
+    "idp": {
+        "name":     "okta"
+    },
+    "regions": {
+        "AWS": [
+            {
+                "region": "us-east-2",
+                "allowedCIDR": "10.50.0.0/16"
+            },
+            {
+                "region": "eu-west-1",
+                "allowedCIDR": "10.51.0.0/16"
+            }   
+        ],                 
+        "Azure": [
+            {
+                "region": "eastus2",
+                "allowedCIDR": "10.5.0.0/16"
+            },
+            {
+                "region": "westus3",
+                "allowedCIDR": "10.6.0.0/16"
+            }
+        ]      
+    },
+    "terraform": {
+        "backend": "Azure",
+        "location": "eastus2"
+    }
+} 

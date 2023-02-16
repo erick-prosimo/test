@@ -1,0 +1,43 @@
+name: Terraform Backend
+
+on:
+  workflow_dispatch:
+
+env:
+  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+
+jobs:
+  terraform:
+    name: Terraform Backend
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Read config file
+      id: configfile
+      run: | 
+        clouds=$(echo $(cat prosimo-config.json | jq '.cloudNickname' | jq 'keys' ) | sed 's/ //g')
+        tfbackend=$(echo $(cat prosimo-config.json | jq '.terraform.backend' | jq 'values' ) | sed 's/ //g' | sed -e 's/^"//' -e 's/"$//')
+        tfbackendLocation=$(echo $(cat prosimo-config.json | jq '.terraform.location' | jq 'values' ) | sed 's/ //g' | sed -e 's/^"//' -e 's/"$//')
+        echo "tfbackend=$tfbackend" >> $GITHUB_ENV 
+        echo "tfbackendLocation=$tfbackendLocation" >> $GITHUB_ENV
+
+    - name: Create Terraform Backend
+      shell: pwsh
+      env:
+        branch: ${{ github.GITHUB_REF }}
+        GH_TOKEN: ${{ secrets.TF_BACKEND }}
+        tfbackend: ${{ env.tfbackend }}
+        tfbackendLocation: ${{ env.tfbackendLocation }}
+      working-directory: Assets/Scripts
+      run: |
+        ./create-tf-backend.ps1

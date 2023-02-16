@@ -1,0 +1,129 @@
+{
+  "id": "/subscriptions/52d876ac-4831-4822-88de-163177c0a269/providers/Microsoft.Resources/deployments/tfstate",
+  "location": "eastus2",
+  "name": "tfstate",
+  "properties": {
+    "correlationId": "8c8449a5-2a2a-47e5-9aa5-c2ff4c84ab08",
+    "debugSetting": null,
+    "dependencies": [
+      {
+        "dependsOn": [
+          {
+            "id": "/subscriptions/52d876ac-4831-4822-88de-163177c0a269/resourceGroups/rg-prosimo-tfstate-bdjqv75",
+            "resourceName": "rg-prosimo-tfstate-bdjqv75",
+            "resourceType": "Microsoft.Resources/resourceGroups"
+          },
+          {
+            "apiVersion": "2021-04-01",
+            "id": "/subscriptions/52d876ac-4831-4822-88de-163177c0a269/resourceGroups/rg-prosimo-tfstate-bdjqv75",
+            "resourceName": "rg-prosimo-tfstate-bdjqv75",
+            "resourceType": "Microsoft.Resources/resourceGroups"
+          }
+        ],
+        "id": 
+"/subscriptions/52d876ac-4831-4822-88de-163177c0a269/resourceGroups/rg-prosimo-tfstate-bdjqv75/providers/Microsoft.Resources/deployments/tfstate-20220927T134433Z",
+        "resourceGroup": "rg-prosimo-tfstate-bdjqv75",
+        "resourceName": "tfstate-20220927T134433Z",
+        "resourceType": "Microsoft.Resources/deployments"
+      }
+    ],
+    "duration": "PT33.057591S",
+    "error": null,
+    "mode": "Incremental",
+    "onErrorDeployment": null,
+    "outputResources": [
+      {
+        "id": "/subscriptions/52d876ac-4831-4822-88de-163177c0a269/resourceGroups/rg-prosimo-tfstate-bdjqv75"
+      },
+      {
+        "id": "/subscriptions/52d876ac-4831-4822-88de-163177c0a269/resourceGroups/rg-prosimo-tfstate-bdjqv75/providers/Microsoft.Storage/storageAccounts/tfstatebdjqv75",
+        "resourceGroup": "rg-prosimo-tfstate-bdjqv75"
+      },
+      {
+        "id": 
+"/subscriptions/52d876ac-4831-4822-88de-163177c0a269/resourceGroups/rg-prosimo-tfstate-bdjqv75/providers/Microsoft.Storage/storageAccounts/tfstatebdjqv75/blobServices/default",
+        "resourceGroup": "rg-prosimo-tfstate-bdjqv75"
+      },
+      {
+        "id": 
+"/subscriptions/52d876ac-4831-4822-88de-163177c0a269/resourceGroups/rg-prosimo-tfstate-bdjqv75/providers/Microsoft.Storage/storageAccounts/tfstatebdjqv75/blobServices/default/containers/tfstate",
+        "resourceGroup": "rg-prosimo-tfstate-bdjqv75"
+      }
+    ],
+    "outputs": {
+      "containerName": {
+        "type": "String",
+        "value": "tfstate"
+      },
+      "rgName": {
+        "type": "String",
+        "value": "rg-prosimo-tfstate-bdjqv75"
+      },
+      "storageName": {
+        "type": "String",
+        "value": "tfstatebdjqv75"
+      }
+    },
+    "parameters": {
+      "location": {
+        "type": "String",
+        "value": "eastus2"
+      },
+      "name": {
+        "type": "String",
+        "value": "tfstate"
+      },
+      "time": {
+        "type": "String",
+        "value": "20220927T134433Z"
+      }
+    },
+    "parametersLink": null,
+    "providers": [
+      {
+        "id": null,
+        "namespace": "Microsoft.Resources",
+        "providerAuthorizationConsentState": null,
+        "registrationPolicy": null,
+        "registrationState": null,
+        "resourceTypes": [
+          {
+            "aliases": null,
+            "apiProfiles": null,
+            "apiVersions": null,
+            "capabilities": null,
+            "defaultApiVersion": null,
+            "locationMappings": null,
+            "locations": [
+              "eastus2"
+            ],
+            "properties": null,
+            "resourceType": "resourceGroups",
+            "zoneMappings": null
+          },
+          {
+            "aliases": null,
+            "apiProfiles": null,
+            "apiVersions": null,
+            "capabilities": null,
+            "defaultApiVersion": null,
+            "locationMappings": null,
+            "locations": [
+              null
+            ],
+            "properties": null,
+            "resourceType": "deployments",
+            "zoneMappings": null
+          }
+        ]
+      }
+    ],
+    "provisioningState": "Succeeded",
+    "templateHash": "11193820660808128606",
+    "templateLink": null,
+    "timestamp": "2022-09-27T13:45:07.745287+00:00",
+    "validatedResources": null
+  },
+  "tags": null,
+  "type": "Microsoft.Resources/deployments"
+}

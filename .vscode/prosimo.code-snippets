@@ -1,0 +1,278 @@
+{
+	"Prosimo-TF-Module": {
+		"prefix": [
+			"Prosimo-Module"
+		],
+		"body": [
+			"provider \"prosimo\" {",
+			" token     = var.prosimo_token",
+			" insecure  = true",
+			" base_url  = \"https://${var.prosimo_teamName}.admin.prosimo.io\"",
+			"}",
+			"",
+			"locals {",
+			" AWSName \t= \"AWS-${var.AWSRegion}\"",
+			" AzureName \t= \"Azure-${var.AzureRegion}\"",
+			" GCPName \t= \"GCP-${var.GCPRegion}\"",
+			" appName \t= \"${1:yourAppName}\"",
+			"}",
+		],
+		"description": "Module declaration for Prosimo.io"
+	},
+	"Prosimo-Provider": {
+		"prefix": [
+			"Prosimo-TF-Provider"
+		],
+		"body": [
+			"terraform {",
+			"\trequired_version = \">=0.13\"",
+			"\trequired_providers {",
+			"\t\tprosimo = {",
+			"\t\t\tsource  = \"prosimo.io/prosimo/prosimo\"",
+			"\t\t\tversion = \"1.0.0\"",
+			"\t\t}",
+			"\t}",
+			"}"
+		],
+		"description": "Prosimo Terraform Provider Settings"
+	},
+	"Prosimo-U2A-Agentless-HTTPS": {
+		"prefix": [
+			"Prosimo-U2A-AgentLess-HTTPS"
+		],
+		"body": [
+			"module \"${1:userApp}\" {",
+			"\tappConnection     = ${2|\"peering\",\"transitGateway\",\"awsVpnGateway\",\"azurePrivateLink\",\"azureTransitVnet\",\"vwanHub\"|}",
+			"\tappIp             = \"${3:10.10.10.10}\"",
+			"\tappName           = \"${local.${5}Name}-${local.appName}\"",
+			"\tcacheRuleName     = \"${4:bypassCache}\"",
+			"\tcloud             = \"${5|AWS,Azure,GCP|}\"",
+			"\tconfigFile        = var.configFile",
+			"\tdecommission      = var.decommission",
+			"\tdomainType        = ${6|\"aws_route53\",\"manual\",\"prosimo\"|}",
+			"\thostedDnsPrefix   = ${7:local.appName}",
+			"\tidp               = \"${8|azure_ad,google,okta,one_login,pingone,other|}\"",
+			"\tmulticloud        = ${9|true,false|}",
+			"\tperformance       = \"${10|CostSaving,PerformanceEnhanced|}\"",
+			"\tport              = \"${11:443}\"",
+			"\tprosimo_teamName  = var.prosimo_teamName",
+			"\tregion            = var.deployment[${12:0}].region",
+			"\twait              = var.wait",
+			"\tsource            = \"/Modules/u2a-agentless-https\"",
+			"}"
+		],
+		"description": "Onboard a web application in Prosimo for agentless user-to-app access."
+	},
+	"Prosimo-U2A-Agent-IP": {
+		"prefix": [
+			"Prosimo-U2A-Agent-IP"
+		],
+		"body": [
+			"module \"${1:agentApp}\" {",
+			"\tappConnection = ${2|\"peering\",\"transitGateway\",\"awsVpnGateway\",\"azurePrivateLink\",\"azureTransitVnet\",\"vwanHub\"|}",
+			"\tappIp         = \"${3:10.10.10.10}\"",
+			"\tappName       = \"RDP-${var.deployment[${10:0}].region}-${var.deployment[].vmName}\"",
+			"\tcloud         = \"${4|AWS,Azure,GCP|}\"",
+			"\tperformance   = var.performance",
+			"\tconfigFile    = var.configFile",
+			"\tdecommission  = var.decommission",
+			"\tidp           = ${5|\"azure_ad\",\"google\",\"okta\",\"one_login\",\"pingone\",\"other\"|}",
+			"\tports         = [ \"${6:3389}\" ]",
+			"\tregion        = var.deployment[${7:0}].region",
+			"\twait          = var.wait",
+			"\tsource        = \"/Modules/u2a-agent-ip\"",
+			"}"
+		],
+		"description": "Onboard an IP based application for agent-based user-to-app access."
+	},
+	"Prosimo-Network": {
+		"prefix": [
+			"Prosimo-Network"
+		],
+		"body": [
+			"module \"${1:network}\" {",
+			"\tname          = ${2:var.networks[0].networkName}",
+			"\tcloud         = \"${3|AWS,Azure,GCP|}\"",
+			"\tregion        = ${4:var.networks[0].region}",
+			"\tnetworkId     = ${5:var.networks[0].networkId}",
+			"\tsubnets       = ${6:var.networks[0].subnetCidrs}",
+			"\tconnectType   = \"${7|peering,transit-gateway,vwan-hub|}\"",
+			"\twait          = var.wait",
+			"\tdecommission  = var.decommission",
+			"\tconfigFile    = var.configFile",
+			"\tsource        = \"/Modules/prosimo-network\"",
+			"}"
+		],
+		"description": "Onboard a single network in Prosimo using a variable"
+	},
+	"Prosimo-Network-Loop": {
+		"prefix": [
+			"Prosimo-Network-Loop"
+		],
+		"body": [
+			"module \"${1:networks}\" {",
+			"\tcount         = length(var.networks)",
+			"\tname          = ${1:var.networks[count.index].networkName}",
+			"\tcloud         = \"${2|AWS,Azure,GCP|}\"",
+			"\tregion        = ${3:var.networks[count.index].region}",
+			"\tnetworkId     = ${4:var.networks[count.index].networkId}",
+			"\tsubnets       = [ ${5:var.networks[count.index].subnetCidrs} ]",
+			"\tconnectType   = \"${6|peering,transit-gateway,vwan-hub|}\"",
+			"\twait          = var.wait",
+			"\tdecommission  = var.decommission",
+			"\tconfigFile    = var.configFile",
+			"\tsource        = \"/Modules/prosimo-network\"",
+			"}"
+		],
+		"description": "Onboard multiple networks in Prosimo looping through variable"
+	},
+	"Prosimo-Network-Variable": {
+		"prefix": [
+			"Prosimo-Network-Variable"
+		],
+		"body": [
+			"variable \"networks\" {",
+			"\tdefault = [",
+			"\t\t {",
+			"\t\t\tnetworkName\t= \"${1:name}\"",
+			"\t\t\tregion \t\t\t= \"${2:region}\"",
+			"\t\t\tnetworkId \t= \"${3:networkId}\"",
+			"\t\t\tsubnetCidrs\t= [ \"${4:cidr01}\", \"${cidr02}\" ]",
+			"\t\t }",
+			"\t]",
+			"}"
+		],
+		"description": "Create network variable for Prosimo onboarding"
+	},
+	"Prosimo-Policy-URL": {
+		"prefix": [
+			"Prosimo-Policy-URL"
+		],
+		"body": [
+			"module \"policy-url\" {",
+			"\tsource      = \"/Modules/policy-url\"",
+			"\tpolicyName  = \"${1:policyName}\"",
+			"\tpolicyType  = \"${2|Agent Based Access,Agentless|}\"",
+			"\taction      = \"${3|allow,deny,bypass|}\"",
+			"\tappName     = \"${4:appToAttach}\"",
+			"\tmfa         = ${5|true,false|}",
+			"\toperation   = \"${6|Contains,Does NOT contain|}\"",
+			"\tpath        = \"${7:urlPath}\"",
+			"}"
+		],
+		"description": "Create a path based URL policy in Prosimo for user to app"
+	},
+	"Prosimo-Policy-Device": {
+		"prefix": [
+			"Prosimo-Policy-Device"
+		],
+		"body": [
+			"module \"policy-device\" {",
+			"\tsource      = \"/Modules/policy-device\"",
+			"\tpolicyName  = \"${1:policyName}\"",
+			"\tpolicyType  = \"${2|Agent Based Access,Agentless|}\"",
+			"\taction      = \"${3|allow,deny|}\"",
+			"\tappName     = \"${4:appToAttach}\"",
+			"\tmfa         = ${5|true,false|}",
+			"\toperation   = \"${6|Is,Is NOT|}\"",
+			"\triskLevel   = \"${7|High,Medium,Low|}\"",
+			"}"
+		],
+		"description": "Create a device policy in Prosimo for agent based applications"
+	},
+	"Prosimo-Policy-WAF": {
+		"prefix": [
+			"Prosimo-Policy-WAF"
+		],
+		"body": [
+			"module \"policy-waf\" {",
+			"\tsource   = \"/Modules/policy-waf\"",
+			"\twafMode  = ${1|\"enforce\",\"detect\"|}",
+			"\twafName  = ${2:\"Enforce-OWASP-${local.appName}}\"",
+			"\tappFqdn  = ${3:\"appFqdn\"}",
+			"}"
+		],
+		"description": "Create a new WAF policy in Prosimo"
+	},
+	"Prosimo-Existing-AppName": {
+		"prefix": [
+			"Prosimo-Existing-AppName"
+		],
+		"body": [
+			"module.${1:moduleName}.prosimoAppName"
+		],
+		"description": "Reference an existing Prosimo app name from a module"
+	},
+	"Prosimo-Existing-FQDN": {
+		"prefix": [
+			"Prosimo-Existing-FQDN"
+		],
+		"body": [
+			"module.${1:moduleName}.appFqdn"
+		],
+		"description": "Reference an existing Prosimo FQDN from a module"
+	},
+	"Prosimo-Existing-AppIP": {
+		"prefix": [
+			"Prosimo-Existing-AppIP"
+		],
+		"body": [
+			"module.${1:moduleName}.vmNicIp"
+		],
+		"description": "Reference an existing IP from a module"
+	},
+	"Prosimo-Options-Performance": {
+		"prefix": [
+			"Prosimo-Options-Performance"
+		],
+		"body": [
+			"\"${1|CostSaving,PerformanceEnhanced|}\""
+		],
+		"description": "Allowed options for performance"
+	},
+	"Prosimo-Settings-Performance": {
+		"prefix": [
+			"Prosimo-Settings-Performance"
+		],
+		"body": [
+			"performance \t\t = \"${1|CostSaving,PerformanceEnhanced|}\""
+		],
+		"description": "Settings for routing and per-app performance"
+	},
+	"Prosimo-Options-IDP": {
+		"prefix": [
+			"Prosimo-Options-IDP"
+		],
+		"body": [
+			"\"${1|azure_ad,google,okta,one_login,pingone,other|}\""
+		],
+		"description": "Allowed options for IDP"
+	},
+	"Prosimo-Settings-Cache": {
+		"prefix": [
+			"Prosimo-Settings-Cache"
+		],
+		"body": [
+			"cacheRuleName \t = \"${1|Confluence,Default Bypass,Default Cache,Gitlab,Jenkins,Jira Cache,Wordpress Cache|}\""
+		],
+		"description": "Prosimo default cache settings"
+	},
+	"Prosimo-Options-Cache": {
+		"prefix": [
+			"Prosimo-Options-Cache"
+		],
+		"body": [
+			"\"${1|Confluence,Default Bypass,Default Cache,Gitlab,Jenkins,Jira Cache,Wordpress Cache|}\""
+		],
+		"description": "Allowed options for default cache"
+	},
+	"Prosimo-Options-NetworkConnect": {
+		"prefix": [
+			"Prosimo-Options-NetworkConnect"
+		],
+		"body": [
+			"\"${1|peering,transit-gateway,vwan-hub|}\""
+		],
+		"description": "Allowed options for connecting networks in Prosimo"
+	}
+}

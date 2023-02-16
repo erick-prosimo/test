@@ -1,0 +1,11 @@
+.DS_Store
+.terraform/providers
+*/*/.terraform/providers
+*/*/.terraform
+*/*/.terraform.lock.hcl
+*/*/*/.terraform
+Examples/AWS/POC/.terraform
+Examples/Azure/POC/.terraform
+Examples/AWS/POC/.terraform.lock.hcl
+Examples/Azure/POC/.terraform.lock.hcl
+*/*/POC/*.pem
